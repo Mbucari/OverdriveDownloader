@@ -36,15 +36,15 @@ namespace OverdriveDownloader
 				return;
 			}
 
-			var odm2 = await OverDriveMedia.LoadAsync(odmFile);
+			var odm = await OverDriveMedia.LoadAsync(odmFile);
 
-			if (odm2 is null)
+			if (odm is null)
 			{
 				LogError($"Couldn't open ODM file: {odmFile}");
 				return;
 			}
 
-			var parts = odm2.Formats.FirstOrDefault()?.Parts;
+			var parts = odm.Formats.FirstOrDefault()?.Parts;
 
 			if (parts?.Length < 1)
 			{
@@ -54,32 +54,32 @@ namespace OverdriveDownloader
 
 			LogInfo($"ODM file contains {parts!.Length} downloadable parts");
 
-			var dir = Path.GetDirectoryName(odmFile)!;
+			var odmDir = Path.GetDirectoryName(odmFile)!;
 
-			Mp3ToMp4Writer? rr = null;
+			Mp3ToMp4Writer? mp4Writer = null;
 
 			foreach (var part in parts)
 			{
 				var partname = part.Name + Path.GetExtension(part.Filename);
-				var partFilename = Path.Combine(dir, partname);
+				var partFilename = Path.Combine(odmDir, partname);
 
 				if (!File.Exists(partFilename))
 				{
 					LogInfo($"Downloading {partname}");
-					if (!await odm2.DownloadPartAsync(part, partFilename)) return;
+					if (!await odm.DownloadPartAsync(part, partFilename)) return;
 				}
 				else
 				{
 					LogInfo($"Found {partFilename}");
 				}
 
-				if (rr is null)
+				if (mp4Writer is null)
 				{
 					var fileOut = File.Open(Path.ChangeExtension(odmFile, "m4b"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
-					rr = Mp3ToMp4Writer.Create(partFilename, fileOut);
+					mp4Writer = Mp3ToMp4Writer.Create(partFilename, fileOut);
 
-					if (rr is null)
+					if (mp4Writer is null)
 					{
 						LogError($"Failed to create {nameof(Mp3ToMp4Writer)}");
 						return;
@@ -87,70 +87,70 @@ namespace OverdriveDownloader
 
 					LogInfo($"Created {nameof(Mp3ToMp4Writer)} with file {partname}");
 
-					var authors = odm2.Metadata?.Creators?.Where(c => c.Role is CreatorType.Author)?.Select(a => a.Name)?.ToArray();
-					var narrators = odm2.Metadata?.Creators?.Where(c => c.Role is CreatorType.Narrator)?.Select(a => a.Name)?.ToArray();
-					var genres = odm2.Metadata?.Subjects?.Select(a => a.Name)?.ToArray();
+					var authors = odm.Metadata?.Creators?.Where(c => c.Role is CreatorType.Author)?.Select(a => a.Name)?.ToArray();
+					var narrators = odm.Metadata?.Creators?.Where(c => c.Role is CreatorType.Narrator)?.Select(a => a.Name)?.ToArray();
+					var genres = odm.Metadata?.Subjects?.Select(a => a.Name)?.ToArray();
 
-					if (odm2.Metadata?.Title is not null)
+					if (odm.Metadata?.Title is not null)
 					{
-						var title = odm2.Metadata.Title;
-						if (odm2.Metadata?.SubTitle is not null)
-							title += ": " + odm2.Metadata?.SubTitle;
+						var title = odm.Metadata.Title;
+						if (odm.Metadata?.SubTitle is not null)
+							title += ": " + odm.Metadata?.SubTitle;
 
 						LogInfo($"Title:  {title}");
 
-						rr.Moov.ILst.EditOrAddTag("©nam", title);
-						rr.Moov.ILst.EditOrAddTag("©alb", title);
+						mp4Writer.Moov.ILst.EditOrAddTag("©nam", title);
+						mp4Writer.Moov.ILst.EditOrAddTag("©alb", title);
 					}
 					if (authors?.Length > 0)
 					{
 						var autStr = string.Join(", ", authors);
 						LogInfo($"Author(s):  {autStr}");
-						rr.Moov.ILst.EditOrAddTag("©aut", autStr);
-						rr.Moov.ILst.EditOrAddTag("aART", autStr);
+						mp4Writer.Moov.ILst.EditOrAddTag("©aut", autStr);
+						mp4Writer.Moov.ILst.EditOrAddTag("aART", autStr);
 					}
 					if (narrators?.Length > 0)
 					{
 						var nrtStr = string.Join(", ", narrators);
 						LogInfo($"Narrator(s):  {nrtStr}");
-						rr.Moov.ILst.EditOrAddTag("©nrt", nrtStr);
-						rr.Moov.ILst.EditOrAddTag("TCOM", nrtStr);
+						mp4Writer.Moov.ILst.EditOrAddTag("©nrt", nrtStr);
+						mp4Writer.Moov.ILst.EditOrAddTag("TCOM", nrtStr);
 					}
 					if (genres?.Length > 0)
 					{
 						var genStr = string.Join(", ", genres);
 						LogInfo($"Genre(s):  {genStr}");
-						rr.Moov.ILst.EditOrAddTag("©gen", genStr);
+						mp4Writer.Moov.ILst.EditOrAddTag("©gen", genStr);
 					}
-					if (odm2.Metadata?.Description is not null)
+					if (odm.Metadata?.Description is not null)
 					{
-						LogInfo($"Description:  {odm2.Metadata.Description}");
-						rr.Moov.ILst.EditOrAddTag("©cmt", odm2.Metadata.Description);
-						rr.Moov.ILst.EditOrAddTag("©des", odm2.Metadata.Description);
+						LogInfo($"Description:  {odm.Metadata.Description}");
+						mp4Writer.Moov.ILst.EditOrAddTag("©cmt", odm.Metadata.Description);
+						mp4Writer.Moov.ILst.EditOrAddTag("©des", odm.Metadata.Description);
 					}
-					if (odm2.Metadata?.Publisher is not null)
+					if (odm.Metadata?.Publisher is not null)
 					{
-						LogInfo($"Publisher:  {odm2.Metadata.Publisher}");
-						rr.Moov.ILst.EditOrAddTag("©pub", odm2.Metadata.Publisher);
+						LogInfo($"Publisher:  {odm.Metadata.Publisher}");
+						mp4Writer.Moov.ILst.EditOrAddTag("©pub", odm.Metadata.Publisher);
 					}
 				}
 				else
 				{
 					LogInfo($"Adding {partname}");
-					rr?.AddMp3File(partFilename);
+					mp4Writer?.AddMp3File(partFilename);
 				}
 			}
 
-			rr?.Dispose();
-			rr?.OutputFile.Close();
+			mp4Writer?.Dispose();
+			mp4Writer?.OutputFile.Close();
 
-			if (rr?.OutputFile is FileStream fs)
+			if (mp4Writer?.OutputFile is FileStream fs)
 			{
 				LogInfo($"Moving moov atom to beginning of file");
 				await Mpeg4Util.RelocateMoovToBeginningAsync(fs.Name, default, (a, b, c) => { });
-
 				LogInfo($"Complete m4b saved at {fs.Name}");
 			}
+
 			LogInfo("Done!");
 		}
 	}

@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
 using static OverdriveDownloader.Program;
@@ -8,9 +9,14 @@ namespace OverdriveDownloader.OdmFile
 	public record OverDriveMedia
 	{
 		const string ClientID = "6D51D9B1-69FA-4442-BD47-6FF51B66FCAD";
-		const string OMC = "3.6.0.0";
-		const string OS = "6.2.2.9200";
+		const string OS = "1.0.0.0";
 		const string EXTRA = "ELOSNOC*AIDEM*EVIRDREVO";
+		static readonly string OMC;
+
+		static OverDriveMedia()
+		{
+			OMC = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0.0";
+		}
 
 		public static async Task<OverDriveMedia?> LoadAsync(string? odmFile)
 		{

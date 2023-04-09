@@ -15,7 +15,7 @@ namespace OverdriveDownloader.OdmFile
 			{
 				var parts = nmval.Split(':');
 				Array.Reverse(parts);
-				if (double.TryParse(parts[0], out var secs)) Time += TimeSpan.FromSeconds(secs);
+				if (double.TryParse(parts[0], out var secs)) Time = TimeSpan.FromSeconds(secs);
 				if (int.TryParse(parts[1], out var mins)) Time += TimeSpan.FromMinutes(mins);
 				if (parts.Length > 2 && int.TryParse(parts[2], out var hrs)) Time += TimeSpan.FromHours(hrs);
 			}
