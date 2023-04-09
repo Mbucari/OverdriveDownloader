@@ -61,7 +61,7 @@ namespace OverdriveDownloader
 
 				if (mp4Writer is null)
 				{
-					var fileOut = File.Open(Path.ChangeExtension(odmFile, "m4b"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
+					var fileOut = File.OpenWrite(Path.ChangeExtension(odmFile, "m4b"));
 
 					mp4Writer = Mp3ToMp4Writer.Create(partFilename, fileOut);
 
@@ -130,7 +130,7 @@ namespace OverdriveDownloader
 			if (mp4Writer?.Moov.ILst.Children.Any(t => t.Header.Type == "covr") is false
 				&& odm.Metadata?.CoverUrl is not null)
 			{
-				LogInfo("Downloading cover art from {}");
+				LogInfo($"Downloading cover art from {odm.Metadata.CoverUrl}");
 				var cover = await new HttpClient().GetByteArrayAsync(odm.Metadata.CoverUrl);
 				mp4Writer?.Moov.ILst.AddTag("covr", cover, Mpeg4Lib.Boxes.AppleDataType.JPEG);
 			}
@@ -141,7 +141,7 @@ namespace OverdriveDownloader
 			if (mp4Writer?.OutputFile is FileStream fs)
 			{
 				LogInfo($"Moving moov atom to beginning of file");
-				await Mpeg4Util.RelocateMoovToBeginningAsync(fs.Name, default, (a, b, c) => { });
+				await Mpeg4Util.RelocateMoovToBeginningAsync(fs.Name, default, (_, _, _) => { });
 				LogInfo($"Complete m4b saved at {fs.Name}");
 			}
 
